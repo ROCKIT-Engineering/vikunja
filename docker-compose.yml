@@ -1,0 +1,68 @@
+services:
+  vikunja:
+    image: vikunja/vikunja
+    ports:
+      - "${VIKUNJA_PORT}:${VIKUNJA_PORT}"
+    environment:
+      # General
+      VIKUNJA_SERVICE_PUBLICURL: ${VIKUNJA_PUBLIC_URL}
+      VIKUNJA_SERVICE_INTERFACE: ${VIKUNJA_INTERFACE}
+      VIKUNJA_SERVICE_JWTSECRET: ${JWT_SECRET}
+      # TLS / SSL
+      VIKUNJA_AUTOTLS_ENABLED: "${AUTOTLS_ENABLED}"
+      VIKUNJA_AUTOTLS_EMAIL: ${AUTOTLS_EMAIL}
+      # Database
+      VIKUNJA_DATABASE_HOST: ${DB_HOST}
+      VIKUNJA_DATABASE_TYPE: ${DB_TYPE}
+      VIKUNJA_DATABASE_USER: ${DB_USER}
+      VIKUNJA_DATABASE_PASSWORD: ${DB_PASSWORD}
+      VIKUNJA_DATABASE_DATABASE: ${DB_NAME}
+      # Redis
+      VIKUNJA_REDIS_ENABLED: "${REDIS_ENABLED}"
+      VIKUNJA_REDIS_HOST: ${REDIS_HOST}
+      # OpenID Connect / SSO
+      VIKUNJA_AUTH_OPENID_ENABLED: "${OIDC_ENABLED}"
+      VIKUNJA_AUTH_OPENID_PROVIDERS_GOOGLE_NAME: ${OIDC_PROVIDER_NAME}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_GOOGLE_AUTHURL: ${OIDC_AUTH_URL}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_GOOGLE_CLIENTID: ${OIDC_CLIENT_ID}
+      VIKUNJA_AUTH_OPENID_PROVIDERS_GOOGLE_CLIENTSECRET: ${OIDC_CLIENT_SECRET}
+      # Plugins
+      VIKUNJA_PLUGINS_ENABLED: "${PLUGINS_ENABLED}"
+    volumes:
+      - files:/app/vikunja/files
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER"]
+      interval: 2s
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  redis-data:
+  files:
