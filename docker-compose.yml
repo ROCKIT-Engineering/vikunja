@@ -59,7 +59,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Router
-      - "traefik.http.routers.vikunja.rule=Host(`${VIKUNJA_HOST_NAME}`)"
+      - "traefik.http.routers.vikunja.rule=Host(\"${VIKUNJA_HOST_NAME}\")"
       - "traefik.http.routers.vikunja.entrypoints=web"
       - "traefik.http.routers.vikunja.service=vikunja"
       # Service
