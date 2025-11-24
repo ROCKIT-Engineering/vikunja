@@ -59,7 +59,6 @@ services:
       VIKUNJA_AUTH_LOCAL_ENABLED: ${VIKUNJA_AUTH_LOCAL_ENABLED}
     volumes:
       - files:/app/vikunja/files
-      - ./assets:/app/vikunja/frontend/assets
     networks:
       - proxy
       - backend
