@@ -1,16 +1,39 @@
 services:
+  traefik:
+    image: traefik:v3.6.2
+    container_name: "traefik"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+      - "--entryPoints.web.address=:80"
+      # TLS
+      - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.websecure.http.tls=true"
+      # Let's Encrypt configuration
+      - "--certificatesresolvers.le.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+
   vikunja:
     image: vikunja/vikunja
-    ports:
-      - "${VIKUNJA_PORT}:${VIKUNJA_PORT}"
     environment:
       # General
       VIKUNJA_SERVICE_PUBLICURL: ${VIKUNJA_PUBLIC_URL}
-      VIKUNJA_SERVICE_INTERFACE: ${VIKUNJA_INTERFACE}
       VIKUNJA_SERVICE_JWTSECRET: ${JWT_SECRET}
-      # TLS / SSL
-      VIKUNJA_AUTOTLS_ENABLED: "${AUTOTLS_ENABLED}"
-      VIKUNJA_AUTOTLS_EMAIL: ${AUTOTLS_EMAIL}
       # Database
       VIKUNJA_DATABASE_HOST: ${DB_HOST}
       VIKUNJA_DATABASE_TYPE: ${DB_TYPE}
@@ -30,6 +53,20 @@ services:
       VIKUNJA_PLUGINS_ENABLED: "${PLUGINS_ENABLED}"
     volumes:
       - files:/app/vikunja/files
+    networks:
+      - proxy
+      - backend
+    labels:
+      - "traefik.enable=true"
+      # Router
+      - "traefik.http.routers.vikunja.rule=Host(`${VIKUNJA_PUBLIC_URL}`)"
+      - "traefik.http.routers.vikunja.entrypoints=web"
+      - "traefik.http.routers.vikunja.service=vikunja"
+      # Service
+      - "traefik.http.services.vikunja.loadbalancer.server.port=3456"
+      # TLS
+      - "traefik.http.routers.vikunja.tls=true"
+      - "traefik.http.routers.vikunja.tls.certresolver=le"
     depends_on:
       db:
         condition: service_healthy
@@ -41,6 +78,8 @@ services:
     image: redis:7
     volumes:
       - redis-data:/data
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 10s
@@ -49,13 +88,15 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:18
+    image: postgres:16
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - db-data:/var/lib/postgresql/data
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER"]
       interval: 2s
@@ -66,3 +107,12 @@ volumes:
   db-data:
   redis-data:
   files:
+  letsencrypt:
+
+networks:
+  proxy:
+    name: proxy
+    driver: bridge
+  backend:
+    name: backend
+    driver: bridge
