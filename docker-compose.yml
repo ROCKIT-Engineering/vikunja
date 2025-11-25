@@ -47,6 +47,7 @@ services:
       VIKUNJA_MAILER_FORCESSL: ${VIKUNJA_MAILER_FORCESSL}
       VIKUNJA_MAILER_HOST: ${VIKUNJA_MAILER_HOST}
       VIKUNJA_MAILER_PORT: ${VIKUNJA_MAILER_PORT}
+      VIKUNJA_MAILER_FROMEMAIL: ${VIKUNJA_MAILER_FROMEMAIL}
       VIKUNJA_MAILER_USERNAME: ${VIKUNJA_MAILER_USERNAME}
       VIKUNJA_MAILER_PASSWORD: ${VIKUNJA_MAILER_PASSWORD}
       # Database
@@ -66,7 +67,7 @@ services:
       VIKUNJA_AUTH_OPENID_PROVIDERS_GOOGLE_CLIENTSECRET: ${OIDC_CLIENT_SECRET}
       VIKUNJA_AUTH_LOCAL_ENABLED: ${VIKUNJA_AUTH_LOCAL_ENABLED}
     volumes:
-      - files:/app/vikunja/files
+      - ./files:/app/vikunja/files
     networks:
       - proxy
       - backend
@@ -120,7 +121,6 @@ services:
 volumes:
   db-data:
   redis-data:
-  files:
   letsencrypt:
 
 networks:
